@@ -1,45 +1,48 @@
 const { spawn } = require("child_process");
 
-function sendMessageToModel(message) {
+function sendMessageToModel(message, execTimeoutMs = 120000) {
   return new Promise((resolve, reject) => {
-    // Spawn a new process every time
-    const modelProcess = spawn(
-      "ollama",
-      ["run", "baraalsedih/llama_spark_teamp2-5"],
-      {
-        stdio: ["pipe", "pipe", "pipe"],
-      }
-    );
+    // Spawn an Ollama process to run 'deepseek-r1' each time
+    const modelProcess = spawn("ollama", ["run", "deepseek-r1"], {
+      stdio: ["pipe", "pipe", "pipe"],
+    });
 
     let messageBuffer = "";
+    let timedOut = false;
 
+    // Automatically kill the process if it exceeds `execTimeoutMs`
+    const killTimer = setTimeout(() => {
+      timedOut = true;
+      modelProcess.kill("SIGKILL"); // Force-kill the process
+      reject(new Error(`Model timed out after ${execTimeoutMs} ms.`));
+    }, execTimeoutMs);
+
+    // Collect output from STDOUT
     modelProcess.stdout.on("data", (data) => {
       messageBuffer += data.toString();
     });
 
-    // Filter out ANSI codes and empty outputs on stderr
+    // (Optional) read STDERR for logging
     modelProcess.stderr.on("data", (data) => {
       const str = data.toString();
-      const escapeRegex = /\x1b\[[0-9;]*[a-zA-Z]/g;
-      const cleanString = str.replace(escapeRegex, "").trim();
-      if (cleanString.length > 0) {
-        // console.error(`Received error: ${cleanString}`);
-      }
+      // If you want to log or strip ANSI codes, do so here
     });
 
-    // Resolve or reject on process exit
+    // When the process exits, resolve or reject
     modelProcess.on("exit", (code) => {
-      console.log(`Model process exited with code ${code}`);
-      if (messageBuffer.trim().length > 0) {
-        resolve(messageBuffer);
-      } else {
-        reject(new Error("Model did not return any output."));
+      clearTimeout(killTimer);
+      if (!timedOut) {
+        console.log(`Model process exited with code ${code}`);
+        if (messageBuffer.trim().length > 0) {
+          resolve(messageBuffer);
+        } else {
+          reject(new Error("Model did not return any output."));
+        }
       }
     });
 
-    // Send message to model
+    // Send the user's input to the model
     modelProcess.stdin.write(`${message}\n`);
-    // Immediately end the input stream so the model knows to finish processing
     modelProcess.stdin.end();
   });
 }

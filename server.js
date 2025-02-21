@@ -1,31 +1,41 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
-const userRoutes = require("./routes/UserRoute");
-const chatbotRoutes = require("./routes/ChatbotRoute.js");
 
-dotenv.config();
+dotenv.config(); // Load environment variables from .env file
 
 const app = express();
-app.use(express.json()); // for parsing application/json
+app.use(express.json()); // Middleware to parse JSON
 
-// Define routes before starting the server
-app.route("/").get((req, res) => {
-  res.send("Hello World!");
+// Routes
+const userRoutes = require("./routes/UserRoute");
+const chatbotRoutes = require("./routes/ChatbotRoute");
+
+// Define API routes
+app.get("/", (req, res) => {
+    res.send("Hello, API is running! 🚀");
 });
 
+// Mount your routes
 app.use("/api/users", userRoutes);
 app.use("/api/chatbot", chatbotRoutes);
 
+// MongoDB Connection
 const PORT = process.env.PORT || 3000;
-const MONGO_URI = process.env.MONGO_URI;
+const MONGO_URI = process.env.MONGO_URI.replace("<db_password>", process.env.DATABASE_PSSWORD);
 
 mongoose
-  .connect(MONGO_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.log(err));
+  .connect(MONGO_URI, {
+    useNewUrlParser: true,
+    useUnifiedTopology: true,
+  })
+  .then(() => console.log("✅ MongoDB connected successfully!"))
+  .catch((err) => console.error("❌ MongoDB connection error:", err));
 
-// Start the server after all routes are defined
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+// Start Server
+const server = app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
+
+// Increase server’s timeout to 60 seconds (60,000 ms)
+server.setTimeout(120000);
