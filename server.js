@@ -11,7 +11,7 @@ app.use(express.json()); // Middleware to parse JSON
 const userRoutes = require("./routes/UserRoute");
 const chatbotRoutes = require("./routes/ChatbotRoute");
 
-// Define API routes
+// Define API Routes
 app.get("/", (req, res) => {
     res.send("Hello, API is running! 🚀");
 });
